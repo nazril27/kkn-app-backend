@@ -181,7 +181,7 @@ Content-Type: application/json
 
 ### b. Ambil Semua Data Rumah
 - **Endpoint:** `GET /houses`
-- **Response `200 OK`:**
+- **Response `200 OK`:** (Menyertakan relasi `user` pendata, bernilai `null` jika tidak ada)
   ```json
   {
     "success": true,
@@ -195,9 +195,15 @@ Content-Type: application/json
         "headOfFamilyName": "Bambang Pamungkas",
         "numberOfFamilyMembers": "4",
         "isSortingWaste": "ya",
-        "userId": null,
+        "userId": 1,
         "createdAt": "2026-11-02T15:47:40.596Z",
-        "updatedAt": "2026-11-02T15:47:40.596Z"
+        "updatedAt": "2026-11-02T15:47:40.596Z",
+        "user": {
+          "id": 1,
+          "name": "Budi Santoso",
+          "email": "budi@example.com",
+          "nim": "1234567890"
+        }
       }
     ]
   }
@@ -221,9 +227,15 @@ Content-Type: application/json
       "headOfFamilyName": "Bambang Pamungkas",
       "numberOfFamilyMembers": "4",
       "isSortingWaste": "ya",
-      "userId": null,
+      "userId": 1,
       "createdAt": "2026-11-02T15:47:40.596Z",
-      "updatedAt": "2026-11-02T15:47:40.596Z"
+      "updatedAt": "2026-11-02T15:47:40.596Z",
+      "user": {
+        "id": 1,
+        "name": "Budi Santoso",
+        "email": "budi@example.com",
+        "nim": "1234567890"
+      }
     }
   }
   ```
@@ -278,7 +290,7 @@ Content-Type: application/json
 
 ### b. Ambil Semua Data Pencatatan Sampah
 - **Endpoint:** `GET /wastes`
-- **Response `200 OK`:**
+- **Response `200 OK`:** (Menyertakan relasi `house` dan `user`)
   ```json
   {
     "success": true,
@@ -286,12 +298,27 @@ Content-Type: application/json
     "data": [
       {
         "id": 1,
-        "userId": null,
-        "houseId": 1,
         "weight": "3.75",
         "typesOfWaste": "organik",
+        "userId": 1,
+        "houseId": 2,
         "createdAt": "2026-11-02T15:32:58.453Z",
-        "updatedAt": "2026-11-02T15:32:58.453Z"
+        "updatedAt": "2026-11-02T15:32:58.453Z",
+        "user": {
+          "id": 1,
+          "name": "Budi Santoso",
+          "email": "budi@example.com",
+          "nim": "1234567890"
+        },
+        "house": {
+          "id": 2,
+          "streetName": "Gang Mawar",
+          "houseNumber": "05",
+          "rt": "02",
+          "headOfFamilyName": "Bambang Pamungkas",
+          "numberOfFamilyMembers": "4",
+          "isSortingWaste": "ya"
+        }
       }
     ]
   }
@@ -309,12 +336,27 @@ Content-Type: application/json
     "message": "Waste record retrieved successfully",
     "data": {
       "id": 1,
-      "userId": null,
-      "houseId": 1,
       "weight": "3.75",
       "typesOfWaste": "organik",
+      "userId": 1,
+      "houseId": 2,
       "createdAt": "2026-11-02T15:32:58.453Z",
-      "updatedAt": "2026-11-02T15:32:58.453Z"
+      "updatedAt": "2026-11-02T15:32:58.453Z",
+      "user": {
+        "id": 1,
+        "name": "Budi Santoso",
+        "email": "budi@example.com",
+        "nim": "1234567890"
+      },
+      "house": {
+        "id": 2,
+        "streetName": "Gang Mawar",
+        "houseNumber": "05",
+        "rt": "02",
+        "headOfFamilyName": "Bambang Pamungkas",
+        "numberOfFamilyMembers": "4",
+        "isSortingWaste": "ya"
+      }
     }
   }
   ```

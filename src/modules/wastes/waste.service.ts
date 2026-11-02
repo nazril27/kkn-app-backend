@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { db } from "../../db/connection";
-import { wastes } from "../../db/schema";
+import { wastes, users, houses } from "../../db/schema";
 
 export type Waste = typeof wastes.$inferSelect;
 export type NewWaste = typeof wastes.$inferInsert;
@@ -14,14 +14,67 @@ export class WasteService {
     return createdWaste;
   }
 
-  static async getAllWastes(): Promise<Waste[]> {
-    return await db.select().from(wastes).orderBy(desc(wastes.createdAt));
+  static async getAllWastes() {
+    return await db
+      .select({
+        id: wastes.id,
+        weight: wastes.weight,
+        typesOfWaste: wastes.typesOfWaste,
+        userId: wastes.userId,
+        houseId: wastes.houseId,
+        createdAt: wastes.createdAt,
+        updatedAt: wastes.updatedAt,
+        user: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          nim: users.nim,
+        },
+        house: {
+          id: houses.id,
+          streetName: houses.streetName,
+          houseNumber: houses.houseNumber,
+          rt: houses.rt,
+          headOfFamilyName: houses.headOfFamilyName,
+          numberOfFamilyMembers: houses.numberOfFamilyMembers,
+          isSortingWaste: houses.isSortingWaste,
+        },
+      })
+      .from(wastes)
+      .leftJoin(users, eq(wastes.userId, users.id))
+      .leftJoin(houses, eq(wastes.houseId, houses.id))
+      .orderBy(desc(wastes.createdAt));
   }
 
-  static async getWasteById(id: number): Promise<Waste | null> {
+  static async getWasteById(id: number) {
     const [waste] = await db
-      .select()
+      .select({
+        id: wastes.id,
+        weight: wastes.weight,
+        typesOfWaste: wastes.typesOfWaste,
+        userId: wastes.userId,
+        houseId: wastes.houseId,
+        createdAt: wastes.createdAt,
+        updatedAt: wastes.updatedAt,
+        user: {
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          nim: users.nim,
+        },
+        house: {
+          id: houses.id,
+          streetName: houses.streetName,
+          houseNumber: houses.houseNumber,
+          rt: houses.rt,
+          headOfFamilyName: houses.headOfFamilyName,
+          numberOfFamilyMembers: houses.numberOfFamilyMembers,
+          isSortingWaste: houses.isSortingWaste,
+        },
+      })
       .from(wastes)
+      .leftJoin(users, eq(wastes.userId, users.id))
+      .leftJoin(houses, eq(wastes.houseId, houses.id))
       .where(eq(wastes.id, id))
       .limit(1);
 

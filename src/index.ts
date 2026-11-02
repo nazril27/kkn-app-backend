@@ -1,9 +1,11 @@
 import { Elysia } from "elysia";
+import { cors } from "@elysiajs/cors";
 import { authController } from "./modules/users/auth.controller";
 import { houseController } from "./modules/houses/house.controller";
 import { wasteController } from "./modules/wastes/waste.controller";
 
 export const app = new Elysia()
+  .use(cors())
   .use(authController)
   .use(houseController)
   .use(wasteController)

@@ -1,4 +1,4 @@
-import { count, desc, eq } from "drizzle-orm";
+import { count, desc, eq, and, ilike, or, SQL } from "drizzle-orm";
 import { db } from "../../db/connection";
 import { houses, users, wastes } from "../../db/schema";
 import { AppError } from "../../lib/errors";
@@ -8,6 +8,13 @@ import { UserService } from "../users/user.service";
 
 export type House = typeof houses.$inferSelect;
 export type NewHouse = typeof houses.$inferInsert;
+
+export interface HouseFilters {
+  search?: string;          // cari di nama kepala keluarga / jalan / no rumah
+  rt?: string;
+  isSortingWaste?: string;  // "ya" | "tidak" | "sebagian"
+  userId?: number;
+}
 
 const houseSelect = {
   id: houses.id,
@@ -60,20 +67,74 @@ export class HouseService {
     return house;
   }
 
-  static async getAllHouses(page: number = 1, pageSize: number = 10) {
+  // static async getAllHouses(page: number = 1, pageSize: number = 10) {
+  //   const { currentPage, limit, offset } = normalizePagination(page, pageSize);
+
+  //   const rows = await db
+  //     .select(houseSelect)
+  //     .from(houses)
+  //     .leftJoin(users, eq(houses.userId, users.id))
+  //     .orderBy(desc(houses.createdAt))
+  //     .limit(limit)
+  //     .offset(offset);
+
+  //   const [countResult] = await db
+  //     .select({ count: count(houses.id) })
+  //     .from(houses);
+
+  //   const total = countResult ? Number(countResult.count) : 0;
+  //   const totalPages = Math.ceil(total / limit);
+
+  //   return {
+  //     data: rows.map((row) => mapHouse(row)!),
+  //     total,
+  //     page: currentPage,
+  //     pageSize: limit,
+  //     totalPages,
+  //   };
+  // }
+
+  static async getAllHouses(
+    page: number = 1,
+    pageSize: number = 10,
+    filters: HouseFilters = {}
+  ) {
     const { currentPage, limit, offset } = normalizePagination(page, pageSize);
 
-    const rows = await db
-      .select(houseSelect)
-      .from(houses)
-      .leftJoin(users, eq(houses.userId, users.id))
-      .orderBy(desc(houses.createdAt))
-      .limit(limit)
-      .offset(offset);
+    // Bangun kondisi filter secara dinamis
+    const conditions: (SQL | undefined)[] = [];
 
-    const [countResult] = await db
-      .select({ count: count(houses.id) })
-      .from(houses);
+    if (filters.search) {
+      const keyword = `%${filters.search}%`;
+      conditions.push(
+        or(
+          ilike(houses.headOfFamilyName, keyword),
+          ilike(houses.streetName, keyword),
+          ilike(houses.houseNumber, keyword)
+        )
+      );
+    }
+    if (filters.rt) conditions.push(eq(houses.rt, filters.rt));
+    if (filters.isSortingWaste)
+      conditions.push(eq(houses.isSortingWaste, filters.isSortingWaste));
+    if (filters.userId !== undefined)
+      conditions.push(eq(houses.userId, filters.userId));
+
+    const where = and(...conditions); // undefined jika tidak ada filter
+
+    const [rows, [countResult]] = await Promise.all([
+      db
+        .select(houseSelect)
+        .from(houses)
+        .leftJoin(users, eq(houses.userId, users.id))
+        .where(where)
+        .orderBy(desc(houses.createdAt), desc(houses.id)) // tie-breaker
+        .limit(limit)
+        .offset(offset),
+
+      // where yang sama dipakai untuk count agar total sesuai filter
+      db.select({ count: count(houses.id) }).from(houses).where(where),
+    ]);
 
     const total = countResult ? Number(countResult.count) : 0;
     const totalPages = Math.ceil(total / limit);

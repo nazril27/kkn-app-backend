@@ -51,15 +51,48 @@ export class HouseController {
     }
   }
 
+  // static async getAll({
+  //   query,
+  //   set,
+  // }: {
+  //   query: { page?: number; pageSize?: number };
+  //   set: { status?: number | string };
+  // }) {
+  //   try {
+  //     const result = await HouseService.getAllHouses(query.page, query.pageSize);
+  //     return {
+  //       success: true,
+  //       message: "Houses retrieved successfully",
+  //       ...result,
+  //     };
+  //   } catch (error: unknown) {
+  //     const { status, body: response } = toErrorResponse(
+  //       error,
+  //       "Failed to retrieve houses",
+  //       500
+  //     );
+  //     set.status = status;
+  //     return response;
+  //   }
+  // }
+
   static async getAll({
     query,
     set,
   }: {
-    query: { page?: number; pageSize?: number };
+    query: {
+      page?: number;
+      pageSize?: number;
+      search?: string;
+      rt?: string;
+      isSortingWaste?: string;
+      userId?: number;
+    };
     set: { status?: number | string };
   }) {
     try {
-      const result = await HouseService.getAllHouses(query.page, query.pageSize);
+      const { page, pageSize, ...filters } = query;
+      const result = await HouseService.getAllHouses(page, pageSize, filters);
       return {
         success: true,
         message: "Houses retrieved successfully",
@@ -226,7 +259,16 @@ export const houseController = new Elysia({ prefix: "/houses" })
     "/",
     async ({ query, set }) => HouseController.getAll({ query, set }),
     {
-      query: paginationQuerySchema,
+      query: t.Object({
+        page: t.Optional(t.Numeric({ minimum: 1 })),
+        pageSize: t.Optional(t.Numeric({ minimum: 1, maximum: 100 })),
+        search: t.Optional(t.String()),
+        rt: t.Optional(t.String()),
+        isSortingWaste: t.Optional(
+          t.Union([t.Literal("ya"), t.Literal("tidak"), t.Literal("sebagian")])
+        ),
+        userId: t.Optional(t.Numeric()),
+      }),
     }
   )
   .get(

@@ -139,9 +139,13 @@ export class DashboardService {
         percent: toPercent(housesCount, totalHouses),
       }));
 
-    const houseCountByRt = new Map(housesByRt.map((row) => [row.rt, toCount(row.houses)]));
-    const familyByRt = new Map(housesByRt.map((row) => [row.rt, toCount(row.familyMembers)]));
-    const wasteByRt = new Map(
+    const houseCountByRt = new Map<string | null, number>(
+      housesByRt.map((row) => [row.rt, toCount(row.houses)])
+    );
+    const familyByRt = new Map<string | null, number>(
+      housesByRt.map((row) => [row.rt, toCount(row.familyMembers)])
+    );
+    const wasteByRt = new Map<string | null, { records: number; totalWeightKg: number }>(
       wastesByRt.map((row) => [
         row.rt,
         {
@@ -151,11 +155,14 @@ export class DashboardService {
       ])
     );
 
-    const rtKeys = [...new Set([...houseCountByRt.keys(), ...wasteByRt.keys()])].sort((a, b) => {
-      if (a == null) return 1;
-      if (b == null) return -1;
-      return a.localeCompare(b, "id");
-    });
+    const rtKeys = [...new Set([...houseCountByRt.keys(), ...wasteByRt.keys()])].sort(
+      (a, b) => {
+        if (a == null && b == null) return 0;
+        if (a == null) return 1;
+        if (b == null) return -1;
+        return a.localeCompare(b, "id");
+      }
+    );
 
     const byRt = rtKeys.map((rtKey) => ({
       rt: rtKey,

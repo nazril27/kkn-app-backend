@@ -1,5 +1,8 @@
 import { Elysia, t } from "elysia";
-import { WasteService } from "./waste.service";
+import { toErrorResponse } from "../../lib/errors";
+import { idParamSchema, paginationQuerySchema, wasteTypeSchema } from "../../lib/http";
+import { normalizeWeight } from "../../lib/validate";
+import { WasteService, type NewWaste } from "./waste.service";
 
 export class WasteController {
   static async create({
@@ -16,7 +19,7 @@ export class WasteController {
   }) {
     try {
       const waste = await WasteService.createWaste({
-        weight: String(body.weight),
+        weight: normalizeWeight(body.weight),
         typesOfWaste: body.typesOfWaste,
         houseId: body.houseId ?? null,
         userId: body.userId ?? null,
@@ -28,29 +31,38 @@ export class WasteController {
         message: "Waste record created successfully",
         data: waste,
       };
-    } catch (error: any) {
-      set.status = 400;
-      return {
-        success: false,
-        message: error.message || "Failed to create waste record",
-      };
+    } catch (error: unknown) {
+      const { status, body: response } = toErrorResponse(
+        error,
+        "Failed to create waste record"
+      );
+      set.status = status;
+      return response;
     }
   }
 
-  static async getAll({ set }: { set: { status?: number | string } }) {
+  static async getAll({
+    query,
+    set,
+  }: {
+    query: { page?: number; pageSize?: number };
+    set: { status?: number | string };
+  }) {
     try {
-      const wasteList = await WasteService.getAllWastes();
+      const result = await WasteService.getAllWastes(query.page, query.pageSize);
       return {
         success: true,
         message: "Waste records retrieved successfully",
-        data: wasteList,
+        ...result,
       };
-    } catch (error: any) {
-      set.status = 500;
-      return {
-        success: false,
-        message: error.message || "Failed to retrieve waste records",
-      };
+    } catch (error: unknown) {
+      const { status, body: response } = toErrorResponse(
+        error,
+        "Failed to retrieve waste records",
+        500
+      );
+      set.status = status;
+      return response;
     }
   }
 
@@ -76,12 +88,92 @@ export class WasteController {
         message: "Waste record retrieved successfully",
         data: waste,
       };
-    } catch (error: any) {
-      set.status = 500;
+    } catch (error: unknown) {
+      const { status, body: response } = toErrorResponse(
+        error,
+        "Failed to retrieve waste record",
+        500
+      );
+      set.status = status;
+      return response;
+    }
+  }
+
+  static async update({
+    params: { id },
+    body,
+    set,
+  }: {
+    params: { id: number };
+    body: {
+      weight?: string | number;
+      typesOfWaste?: string;
+      houseId?: number | null;
+      userId?: number | null;
+    };
+    set: { status?: number | string };
+  }) {
+    try {
+      const existing = await WasteService.getWasteById(id);
+      if (!existing) {
+        set.status = 404;
+        return {
+          success: false,
+          message: `Waste record with ID ${id} not found`,
+        };
+      }
+
+      const updateData: Partial<NewWaste> = {};
+      if (body.weight !== undefined) updateData.weight = normalizeWeight(body.weight);
+      if (body.typesOfWaste !== undefined) updateData.typesOfWaste = body.typesOfWaste;
+      if (body.houseId !== undefined) updateData.houseId = body.houseId;
+      if (body.userId !== undefined) updateData.userId = body.userId;
+
+      const updatedWaste = await WasteService.updateWaste(id, updateData);
+
       return {
-        success: false,
-        message: error.message || "Failed to retrieve waste record",
+        success: true,
+        message: "Waste record updated successfully",
+        data: updatedWaste,
       };
+    } catch (error: unknown) {
+      const { status, body: response } = toErrorResponse(
+        error,
+        "Failed to update waste record"
+      );
+      set.status = status;
+      return response;
+    }
+  }
+
+  static async delete({
+    params: { id },
+    set,
+  }: {
+    params: { id: number };
+    set: { status?: number | string };
+  }) {
+    try {
+      const deleted = await WasteService.deleteWaste(id);
+      if (!deleted) {
+        set.status = 404;
+        return {
+          success: false,
+          message: `Waste record with ID ${id} not found`,
+        };
+      }
+
+      return {
+        success: true,
+        message: "Waste record deleted successfully",
+      };
+    } catch (error: unknown) {
+      const { status, body: response } = toErrorResponse(
+        error,
+        "Failed to delete waste record"
+      );
+      set.status = status;
+      return response;
     }
   }
 }
@@ -93,19 +185,44 @@ export const wasteController = new Elysia({ prefix: "/wastes" })
     {
       body: t.Object({
         weight: t.Union([t.String(), t.Number()]),
-        typesOfWaste: t.String({ minLength: 1 }),
+        typesOfWaste: wasteTypeSchema,
         houseId: t.Optional(t.Nullable(t.Number())),
         userId: t.Optional(t.Nullable(t.Number())),
       }),
     }
   )
-  .get("/", async ({ set }) => WasteController.getAll({ set }))
+  .get(
+    "/",
+    async ({ query, set }) => WasteController.getAll({ query, set }),
+    {
+      query: paginationQuerySchema,
+    }
+  )
   .get(
     "/:id",
     async ({ params, set }) => WasteController.getById({ params: { id: params.id }, set }),
     {
-      params: t.Object({
-        id: t.Numeric(),
+      params: idParamSchema,
+    }
+  )
+  .patch(
+    "/:id",
+    async ({ params, body, set }) =>
+      WasteController.update({ params: { id: params.id }, body, set }),
+    {
+      params: idParamSchema,
+      body: t.Object({
+        weight: t.Optional(t.Union([t.String(), t.Number()])),
+        typesOfWaste: t.Optional(wasteTypeSchema),
+        houseId: t.Optional(t.Nullable(t.Number())),
+        userId: t.Optional(t.Nullable(t.Number())),
       }),
+    }
+  )
+  .delete(
+    "/:id",
+    async ({ params, set }) => WasteController.delete({ params: { id: params.id }, set }),
+    {
+      params: idParamSchema,
     }
   );

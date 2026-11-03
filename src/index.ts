@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
+import { dashboardController } from "./modules/dashboard/dashboard.controller";
 import { authController } from "./modules/users/auth.controller";
 import { houseController } from "./modules/houses/house.controller";
 import { wasteController } from "./modules/wastes/waste.controller";
@@ -9,6 +10,7 @@ export const app = new Elysia()
   .use(authController)
   .use(houseController)
   .use(wasteController)
+  .use(dashboardController)
   .get("/", () => ({
     message: "KKN App API is running",
   }));

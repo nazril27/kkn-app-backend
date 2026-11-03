@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { toErrorResponse } from "../../lib/errors";
 import { AuthService } from "./auth.service";
 
 export class AuthController {
@@ -17,12 +18,13 @@ export class AuthController {
         message: "User registered successfully",
         data: user,
       };
-    } catch (error: any) {
-      set.status = 400;
-      return {
-        success: false,
-        message: error.message || "Failed to register user",
-      };
+    } catch (error: unknown) {
+      const { status, body: response } = toErrorResponse(
+        error,
+        "Failed to register user"
+      );
+      set.status = status;
+      return response;
     }
   }
 
@@ -41,12 +43,14 @@ export class AuthController {
         message: "Login successful",
         data: user,
       };
-    } catch (error: any) {
-      set.status = 401;
-      return {
-        success: false,
-        message: error.message || "Invalid credentials",
-      };
+    } catch (error: unknown) {
+      const { status, body: response } = toErrorResponse(
+        error,
+        "Invalid credentials",
+        401
+      );
+      set.status = status;
+      return response;
     }
   }
 

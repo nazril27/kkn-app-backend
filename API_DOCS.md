@@ -1,37 +1,50 @@
-# 📖 Dokumentasi API - KKN App Backend
+# Dokumentasi API — KKN App Backend
 
-Dokumentasi ini ditujukan untuk tim **Frontend** sebagai panduan integrasi API.
+Panduan integrasi untuk frontend.
 
----
+## Base URL
 
-## 🌐 Base URL
+- Lokal: `http://localhost:3000`
+- Produksi (Vercel): `https://kkn-app-backend.vercel.app`
 
-- **Lokal:** `http://localhost:3000`
-- **Produksi (Vercel):** `https://kkn-app-backend.vercel.app`
+Request dengan body wajib memakai:
 
-Semua request dengan payload body **wajib** menyertakan header:
 ```http
 Content-Type: application/json
 ```
 
-> **Catatan Autentikasi Saat Ini:**  
-> Backend saat ini **belum menerapkan token (JWT/Session)**.  
-> Data login/register langsung mengembalikan profil user yang bisa disimpan di state / `localStorage` frontend untuk sementara.
+Autentikasi JWT/session **belum** diterapkan. Register/login mengembalikan profil user (tanpa password). Simpan di state atau `localStorage` jika dibutuhkan. Endpoint houses, wastes, dan **dashboard publik** bisa dipanggil tanpa token.
 
 ---
 
-## 📦 Format Respon Standar
+## Format response
 
-### Respon Sukses
+### Sukses (satu resource)
+
 ```json
 {
   "success": true,
-  "message": "Pesan deskriptif sukses",
-  "data": { ... } // Atau array [ ... ]
+  "message": "Pesan deskriptif",
+  "data": { }
 }
 ```
 
-### Respon Error
+### Sukses (list + paginasi)
+
+```json
+{
+  "success": true,
+  "message": "Pesan deskriptif",
+  "data": [],
+  "total": 25,
+  "page": 1,
+  "pageSize": 10,
+  "totalPages": 3
+}
+```
+
+### Error
+
 ```json
 {
   "success": false,
@@ -39,187 +52,186 @@ Content-Type: application/json
 }
 ```
 
+Validasi schema Elysia (tipe salah, field wajib kosong, enum tidak valid) biasanya mengembalikan **422** dengan format error Elysia, bukan `{ success, message }`.
+
 ---
 
-## 1. 🔐 Modul Autentikasi (`/auth`)
+## Paginasi
 
-### a. Register User Baru
-- **Endpoint:** `POST /auth/register`
-- **Request Body:**
-  | Field | Tipe | Wajib | Keterangan |
-  | :--- | :--- | :--- | :--- |
-  | `name` | `string` | Ya | Nama lengkap |
-  | `nim` | `string` | Ya | Nomor Induk Mahasiswa (harus unik) |
-  | `password` | `string` | Ya | Minimal 1 karakter |
-  | `email` | `string` | Tidak | Opsional (harus unik jika diisi) |
+Berlaku untuk `GET /houses` dan `GET /wastes`.
 
-- **Contoh Body:**
-  ```json
-  {
+| Query | Tipe | Default | Keterangan |
+| :--- | :--- | :--- | :--- |
+| `page` | number | `1` | Halaman, minimum 1 |
+| `pageSize` | number | `10` | Jumlah item per halaman, maksimum **100** |
+
+Nilai `page` / `pageSize` yang tidak valid (0, negatif, bukan angka) dikembalikan ke default. `pageSize` di atas 100 dipotong menjadi 100.
+
+Contoh: `GET /houses?page=2&pageSize=20`
+
+---
+
+## Enum & aturan field
+
+| Field | Nilai yang diterima |
+| :--- | :--- |
+| `isSortingWaste` | `"ya"` \| `"tidak"` \| `"sebagian"` |
+| `typesOfWaste` | `"organik"` \| `"nonorganik"` \| `"residu"` \| `"lainnya"` |
+| `numberOfFamilyMembers` | integer positif (`1`, `2`, …). String `"4"` juga diterima. Disimpan sebagai string. |
+| `weight` | angka ≥ 0. String `"3.75"` juga diterima. Disimpan sebagai string desimal. |
+| `rt` | string 1–5 karakter |
+| `headOfFamilyName` | string 1–255 karakter |
+| `streetName` | opsional, max 255. String kosong jadi `null`. |
+| `houseNumber` | opsional, max 5 karakter. String kosong jadi `null`. |
+| `userId` / `houseId` | opsional. `null` menghapus relasi. ID yang tidak ada → **422**. |
+
+Relasi nested:
+
+- Ada relasi → objek (`user` / `house`)
+- Tidak ada relasi → `null` (bukan `{ "id": null, ... }`)
+
+---
+
+## 1. Auth (`/auth`)
+
+Tidak ada CRUD user di HTTP. Hanya register, login, dan logout stub.
+
+### `POST /auth/register`
+
+| Field | Tipe | Wajib | Keterangan |
+| :--- | :--- | :--- | :--- |
+| `name` | string | Ya | Nama lengkap |
+| `nim` | string | Ya | Unik |
+| `password` | string | Ya | Minimal 1 karakter (di-hash di server) |
+| `email` | string \| null | Tidak | Unik jika diisi |
+
+```json
+{
+  "name": "Budi Santoso",
+  "nim": "1234567890",
+  "password": "password123",
+  "email": "budi@example.com"
+}
+```
+
+**201**
+
+```json
+{
+  "success": true,
+  "message": "User registered successfully",
+  "data": {
+    "id": 1,
     "name": "Budi Santoso",
+    "email": "budi@example.com",
     "nim": "1234567890",
-    "password": "password123",
-    "email": "budi@example.com"
+    "createdAt": "2026-11-02T15:24:13.887Z",
+    "updatedAt": "2026-11-02T15:24:13.887Z"
   }
-  ```
-- **Response `201 Created`:**
-  ```json
-  {
-    "success": true,
-    "message": "User registered successfully",
-    "data": {
-      "id": 1,
-      "name": "Budi Santoso",
-      "email": "budi@example.com",
-      "nim": "1234567890",
-      "createdAt": "2026-11-02T15:24:13.887Z",
-      "updatedAt": "2026-11-02T15:24:13.887Z"
-    }
-  }
-  ```
-- **Response Error (`400 Bad Request`):** Jika NIM atau email sudah terdaftar.
+}
+```
+
+Password tidak pernah dikembalikan.
+
+- **409** — NIM atau email sudah terdaftar
+- **400** — field wajib kosong
+
+### `POST /auth/login`
+
+Isi salah satu: `identifier` (email atau NIM), `email`, atau `nim`, plus `password`.
+
+```json
+{
+  "identifier": "1234567890",
+  "password": "password123"
+}
+```
+
+**200** — body `data` sama seperti register (profil tanpa password).
+
+- **400** — identifier tidak dikirim
+- **401** — email/NIM atau password salah
+
+### `POST /auth/logout`
+
+Body kosong. **200** `{ "success": true, "message": "Logout successful" }`.
+
+Karena belum ada session/JWT, endpoint ini hanya konfirmasi di sisi client (hapus state lokal).
 
 ---
 
-### b. Login User
-- **Endpoint:** `POST /auth/login`
-- **Catatan:** Bisa login menggunakan `identifier` (bisa diisi email atau NIM), atau langsung lewat field `email` / `nim`.
-- **Request Body:**
-  | Field | Tipe | Wajib | Keterangan |
-  | :--- | :--- | :--- | :--- |
-  | `identifier` | `string` | Ya* | Email ATAU NIM |
-  | `password` | `string` | Ya | Password pengguna |
-  | `email` | `string` | Alternatif | Bisa dipakai jika tidak memakai `identifier` |
-  | `nim` | `string` | Alternatif | Bisa dipakai jika tidak memakai `identifier` |
+## 2. Rumah (`/houses`)
 
-- **Contoh Body:**
-  ```json
-  {
-    "identifier": "1234567890",
-    "password": "password123"
-  }
-  ```
-- **Response `200 OK`:**
-  ```json
-  {
-    "success": true,
-    "message": "Login successful",
-    "data": {
-      "id": 1,
-      "name": "Budi Santoso",
-      "email": "budi@example.com",
-      "nim": "1234567890",
-      "createdAt": "2026-11-02T15:24:13.887Z",
-      "updatedAt": "2026-11-02T15:24:13.887Z"
-    }
-  }
-  ```
-- **Response Error (`401 Unauthorized`):** Jika email/NIM atau password salah.
+Create/update/get by id mengembalikan rumah **plus** `user` (pendata).
 
----
+### `POST /houses`
 
-### c. Logout
-- **Endpoint:** `POST /auth/logout`
-- **Request Body:** `{}` (kosong)
-- **Response `200 OK`:**
-  ```json
-  {
-    "success": true,
-    "message": "Logout successful"
-  }
-  ```
+| Field | Tipe | Wajib |
+| :--- | :--- | :--- |
+| `rt` | string | Ya |
+| `headOfFamilyName` | string | Ya |
+| `numberOfFamilyMembers` | number \| string | Ya |
+| `isSortingWaste` | `"ya"` \| `"tidak"` \| `"sebagian"` | Ya |
+| `streetName` | string \| null | Tidak |
+| `houseNumber` | string \| number \| null | Tidak |
+| `userId` | number \| null | Tidak |
 
----
+```json
+{
+  "rt": "02",
+  "headOfFamilyName": "Bambang Pamungkas",
+  "numberOfFamilyMembers": 4,
+  "isSortingWaste": "ya",
+  "streetName": "Gang Mawar",
+  "houseNumber": "05",
+  "userId": 1
+}
+```
 
-## 2. 🏠 Modul Data Rumah (`/houses`)
+**201**
 
-### a. Tambah Data Rumah
-- **Endpoint:** `POST /houses`
-- **Request Body:**
-  | Field | Tipe | Wajib | Keterangan |
-  | :--- | :--- | :--- | :--- |
-  | `rt` | `string` | Ya | Nomor RT (contoh: `"01"`, `"02"`) |
-  | `headOfFamilyName` | `string` | Ya | Nama Kepala Keluarga |
-  | `numberOfFamilyMembers` | `number` \| `string` | Ya | Jumlah anggota keluarga |
-  | `isSortingWaste` | `string` | Ya | Pilihan: `"ya"`, `"tidak"`, `"sebagian"` |
-  | `streetName` | `string` | Tidak | Nama jalan atau gang |
-  | `houseNumber` | `string` \| `number` | Tidak | Nomor rumah |
-  | `userId` | `number` | Tidak | ID user/mahasiswa pendata (jika ada) |
-
-- **Contoh Body:**
-  ```json
-  {
+```json
+{
+  "success": true,
+  "message": "House created successfully",
+  "data": {
+    "id": 1,
+    "streetName": "Gang Mawar",
+    "houseNumber": "05",
     "rt": "02",
     "headOfFamilyName": "Bambang Pamungkas",
-    "numberOfFamilyMembers": 4,
+    "numberOfFamilyMembers": "4",
     "isSortingWaste": "ya",
-    "streetName": "Gang Mawar",
-    "houseNumber": "05"
-  }
-  ```
-- **Response `201 Created`:**
-  ```json
-  {
-    "success": true,
-    "message": "House created successfully",
-    "data": {
+    "userId": 1,
+    "createdAt": "2026-11-02T15:47:40.596Z",
+    "updatedAt": "2026-11-02T15:47:40.596Z",
+    "user": {
       "id": 1,
-      "streetName": "Gang Mawar",
-      "houseNumber": "05",
-      "rt": "02",
-      "headOfFamilyName": "Bambang Pamungkas",
-      "numberOfFamilyMembers": "4",
-      "isSortingWaste": "ya",
-      "userId": null,
-      "createdAt": "2026-11-02T15:47:40.596Z",
-      "updatedAt": "2026-11-02T15:47:40.596Z"
+      "name": "Budi Santoso",
+      "email": "budi@example.com",
+      "nim": "1234567890"
     }
   }
-  ```
+}
+```
 
----
+Tanpa `userId`, field `user` bernilai `null`.
 
-### b. Ambil Semua Data Rumah
-- **Endpoint:** `GET /houses`
-- **Response `200 OK`:** (Menyertakan relasi `user` pendata, bernilai `null` jika tidak ada)
-  ```json
-  {
-    "success": true,
-    "message": "Houses retrieved successfully",
-    "data": [
-      {
-        "id": 1,
-        "streetName": "Gang Mawar",
-        "houseNumber": "05",
-        "rt": "02",
-        "headOfFamilyName": "Bambang Pamungkas",
-        "numberOfFamilyMembers": "4",
-        "isSortingWaste": "ya",
-        "userId": 1,
-        "createdAt": "2026-11-02T15:47:40.596Z",
-        "updatedAt": "2026-11-02T15:47:40.596Z",
-        "user": {
-          "id": 1,
-          "name": "Budi Santoso",
-          "email": "budi@example.com",
-          "nim": "1234567890"
-        }
-      }
-    ]
-  }
-  ```
+- **400** — jumlah anggota keluarga bukan integer positif, `houseNumber` > 5 karakter
+- **422** — `userId` tidak ditemukan
 
----
+### `GET /houses`
 
-### c. Ambil Detail Rumah Berdasarkan ID
-- **Endpoint:** `GET /houses/:id`
-- **Parameter URL:** `id` (integer)
-- **Response `200 OK`:**
-  ```json
-  {
-    "success": true,
-    "message": "House retrieved successfully",
-    "data": {
+Query: `page`, `pageSize`. Diurutkan `createdAt` descending.
+
+**200**
+
+```json
+{
+  "success": true,
+  "message": "Houses retrieved successfully",
+  "data": [
+    {
       "id": 1,
       "streetName": "Gang Mawar",
       "houseNumber": "05",
@@ -237,146 +249,151 @@ Content-Type: application/json
         "nim": "1234567890"
       }
     }
-  }
-  ```
-- **Response Error (`404 Not Found`):**
-  ```json
-  {
-    "success": false,
-    "message": "House with ID 999 not found"
-  }
-  ```
+  ],
+  "total": 1,
+  "page": 1,
+  "pageSize": 10,
+  "totalPages": 1
+}
+```
+
+### `GET /houses/:id`
+
+`:id` harus angka ≥ 1.
+
+**200** — satu objek di `data` (bentuk sama seperti item list).
+
+**404** — `House with ID {id} not found`
+
+### `PATCH /houses/:id`
+
+Partial update. Kirim hanya field yang berubah. String wajib (`rt`, `headOfFamilyName`) tidak boleh kosong jika dikirim.
+
+`userId: null` melepas relasi pendata.
+
+**200** — `House updated successfully`, `data` lengkap termasuk `user`.
+
+- **404** — rumah tidak ada
+- **400** / **422** — sama seperti create
+
+### `DELETE /houses/:id`
+
+**200** `{ "success": true, "message": "House deleted successfully" }`
+
+- **404** — rumah tidak ada
+- **409** — masih ada pencatatan sampah yang merujuk rumah ini. Hapus (atau pindahkan) data wastes dulu.
+
+```json
+{
+  "success": false,
+  "message": "Cannot delete house 1 because waste records still reference it."
+}
+```
 
 ---
 
-## 3. 🗑️ Modul Pencatatan Sampah (`/wastes`)
+## 3. Sampah (`/wastes`)
 
-### a. Tambah Pencatatan Sampah
-- **Endpoint:** `POST /wastes`
-- **Request Body:**
-  | Field | Tipe | Wajib | Keterangan |
-  | :--- | :--- | :--- | :--- |
-  | `weight` | `number` \| `string` | Ya | Berat sampah dalam kg (contoh: `3.75` atau `"3.75"`) |
-  | `typesOfWaste` | `string` | Ya | Kategori sampah (misal: `"organik"`, `"nonorganik"`, `"residu"`) |
-  | `houseId` | `number` | Tidak | ID rumah terkait |
-  | `userId` | `number` | Tidak | ID user/mahasiswa pencatat |
+Create/update/get mengembalikan record **plus** `user` dan `house`.
 
-- **Contoh Body:**
-  ```json
-  {
-    "weight": 3.75,
-    "typesOfWaste": "organik",
-    "houseId": 1
-  }
-  ```
-- **Response `201 Created`:**
-  ```json
-  {
-    "success": true,
-    "message": "Waste record created successfully",
-    "data": {
-      "id": 1,
-      "userId": null,
-      "houseId": 1,
-      "weight": "3.75",
-      "typesOfWaste": "organik",
-      "createdAt": "2026-11-02T15:32:58.453Z",
-      "updatedAt": "2026-11-02T15:32:58.453Z"
-    }
-  }
-  ```
+### `POST /wastes`
 
----
-
-### b. Ambil Semua Data Pencatatan Sampah
-- **Endpoint:** `GET /wastes`
-- **Response `200 OK`:** (Menyertakan relasi `house` dan `user`)
-  ```json
-  {
-    "success": true,
-    "message": "Waste records retrieved successfully",
-    "data": [
-      {
-        "id": 1,
-        "weight": "3.75",
-        "typesOfWaste": "organik",
-        "userId": 1,
-        "houseId": 2,
-        "createdAt": "2026-11-02T15:32:58.453Z",
-        "updatedAt": "2026-11-02T15:32:58.453Z",
-        "user": {
-          "id": 1,
-          "name": "Budi Santoso",
-          "email": "budi@example.com",
-          "nim": "1234567890"
-        },
-        "house": {
-          "id": 2,
-          "streetName": "Gang Mawar",
-          "houseNumber": "05",
-          "rt": "02",
-          "headOfFamilyName": "Bambang Pamungkas",
-          "numberOfFamilyMembers": "4",
-          "isSortingWaste": "ya"
-        }
-      }
-    ]
-  }
-  ```
-
----
-
-### c. Ambil Detail Sampah Berdasarkan ID
-- **Endpoint:** `GET /wastes/:id`
-- **Parameter URL:** `id` (integer)
-- **Response `200 OK`:**
-  ```json
-  {
-    "success": true,
-    "message": "Waste record retrieved successfully",
-    "data": {
-      "id": 1,
-      "weight": "3.75",
-      "typesOfWaste": "organik",
-      "userId": 1,
-      "houseId": 2,
-      "createdAt": "2026-11-02T15:32:58.453Z",
-      "updatedAt": "2026-11-02T15:32:58.453Z",
-      "user": {
-        "id": 1,
-        "name": "Budi Santoso",
-        "email": "budi@example.com",
-        "nim": "1234567890"
-      },
-      "house": {
-        "id": 2,
-        "streetName": "Gang Mawar",
-        "houseNumber": "05",
-        "rt": "02",
-        "headOfFamilyName": "Bambang Pamungkas",
-        "numberOfFamilyMembers": "4",
-        "isSortingWaste": "ya"
-      }
-    }
-  }
-  ```
-- **Response Error (`404 Not Found`):**
-  ```json
-  {
-    "success": false,
-    "message": "Waste record with ID 999 not found"
-  }
-  ```
-
----
-
-## 🚦 Ringkasan Status Code HTTP
-
-| Status Code | Arti | Keterangan |
+| Field | Tipe | Wajib |
 | :--- | :--- | :--- |
-| `200 OK` | Sukses | Request GET berhasil, atau proses login/logout sukses |
-| `201 Created` | Berhasil Dibuat | Data baru berhasil disimpan (Register, House, Waste) |
-| `400 Bad Request` | Permintaan Tidak Sah | Validasi bisnis gagal (misal duplikasi NIM/Email) |
-| `401 Unauthorized` | Autentikasi Gagal | Password atau NIM/Email salah saat login |
-| `404 Not Found` | Data Tidak Ditemukan | ID rumah atau ID sampah tidak ada di database |
-| `422 Unprocessable` | Format Schema Salah | Ada field wajib yang kosong atau tipe data tidak sesuai |
+| `weight` | number \| string | Ya (≥ 0) |
+| `typesOfWaste` | `"organik"` \| `"nonorganik"` \| `"residu"` \| `"lainnya"` | Ya |
+| `houseId` | number \| null | Tidak |
+| `userId` | number \| null | Tidak |
+
+```json
+{
+  "weight": 3.75,
+  "typesOfWaste": "organik",
+  "houseId": 1,
+  "userId": 1
+}
+```
+
+**201**
+
+```json
+{
+  "success": true,
+  "message": "Waste record created successfully",
+  "data": {
+    "id": 1,
+    "weight": "3.75",
+    "typesOfWaste": "organik",
+    "userId": 1,
+    "houseId": 1,
+    "createdAt": "2026-11-02T15:32:58.453Z",
+    "updatedAt": "2026-11-02T15:32:58.453Z",
+    "user": {
+      "id": 1,
+      "name": "Budi Santoso",
+      "email": "budi@example.com",
+      "nim": "1234567890"
+    },
+    "house": {
+      "id": 1,
+      "streetName": "Gang Mawar",
+      "houseNumber": "05",
+      "rt": "02",
+      "headOfFamilyName": "Bambang Pamungkas",
+      "numberOfFamilyMembers": "4",
+      "isSortingWaste": "ya"
+    }
+  }
+}
+```
+
+- **400** — berat negatif atau bukan angka
+- **422** — `userId` atau `houseId` tidak ditemukan
+
+### `GET /wastes`
+
+Query: `page`, `pageSize`. Urutan `createdAt` descending.
+
+**200** — `data` array + `total`, `page`, `pageSize`, `totalPages`. Item sama seperti create (termasuk `user` dan `house`, masing-masing bisa `null`).
+
+### `GET /wastes/:id`
+
+**200** — satu record.
+
+**404** — `Waste record with ID {id} not found`
+
+### `PATCH /wastes/:id`
+
+Partial update. `houseId: null` / `userId: null` melepas relasi.
+
+**200** — `Waste record updated successfully`
+
+- **404** — record tidak ada
+- **400** / **422** — sama seperti create
+
+### `DELETE /wastes/:id`
+
+**200** `{ "success": true, "message": "Waste record deleted successfully" }`
+
+**404** — record tidak ada
+
+---
+
+## Status code
+
+| Kode | Kapan |
+| :--- | :--- |
+| `200` | GET, PATCH, DELETE, login, logout |
+| `201` | Register, create house, create waste |
+| `400` | Validasi bisnis (berat negatif, jumlah anggota tidak valid, identifier login kosong) |
+| `401` | Login gagal |
+| `404` | ID rumah/sampah tidak ada |
+| `409` | Duplikasi NIM/email, atau hapus rumah yang masih punya data sampah |
+| `422` | Schema request salah (Elysia), atau `userId`/`houseId` tidak ada di database |
+| `500` | Error server / database |
+
+---
+
+## Health check
+
+`GET /` → `{ "message": "KKN App API is running" }`

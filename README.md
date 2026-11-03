@@ -1,36 +1,77 @@
 # KKN App Backend
 
-Backend API untuk aplikasi pencatatan KKN (Pengelolaan Rumah & Sampah).
+Backend API untuk aplikasi pencatatan KKN: data rumah, pencatatan sampah, dan akun mahasiswa.
 
-Dibangun menggunakan:
-- **Runtime:** [Bun](https://bun.sh)
-- **Framework:** [ElysiaJS](https://elysiajs.com)
-- **Database & ORM:** PostgreSQL ([Neon Serverless](https://neon.tech)) & [Drizzle ORM](https://orm.drizzle.team)
-- **Platform Deployment:** [Vercel](https://vercel.com)
+**Stack:** [Bun](https://bun.sh) · [ElysiaJS](https://elysiajs.com) · PostgreSQL ([Neon](https://neon.tech)) · [Drizzle ORM](https://orm.drizzle.team) · [Vercel](https://vercel.com)
+
+Dokumentasi endpoint untuk frontend: **[API_DOCS.md](./API_DOCS.md)**
 
 ---
 
-## 🚀 Menjalankan Server Lokal
+## Menjalankan lokal
 
-1. **Instalasi Dependensi:**
-   ```bash
-   bun install
-   ```
+1. Instal dependensi:
 
-2. **Setup Environment Variable (`.env`):**
-   ```env
-   DATABASE_URL="postgresql://..."
-   ```
+```bash
+bun install
+```
 
-3. **Jalankan Aplikasi:**
-   ```bash
-   bun run index.ts
-   ```
-   Server akan berjalan di `http://localhost:3000`.
+2. Buat `.env`:
+
+```env
+DATABASE_URL="postgresql://..."
+PORT=3000
+```
+
+3. Jalankan server:
+
+```bash
+bun run index.ts
+```
+
+API tersedia di `http://localhost:3000`.
+
+Hot reload:
+
+```bash
+bun --hot index.ts
+```
 
 ---
 
-## 📖 Dokumentasi API untuk Frontend
+## Perintah lain
 
-Dokumentasi lengkap mengenai endpoint, format payload request, dan contoh response dapat dilihat di:
-👉 **[API_DOCS.md](./API_DOCS.md)**
+```bash
+bun test                 # unit test helper (paginasi, validasi)
+bunx tsc --noEmit        # typecheck
+bunx drizzle-kit generate
+bunx drizzle-kit migrate
+bunx drizzle-kit studio
+```
+
+---
+
+## Struktur
+
+```
+src/
+  db/                 # koneksi Neon + schema Drizzle
+  lib/                # error, paginasi, validasi, schema HTTP
+  modules/
+    users/            # register, login, logout (belum JWT)
+    houses/           # CRUD rumah
+    wastes/           # CRUD pencatatan sampah
+  index.ts            # app Elysia + CORS
+index.ts              # entry lokal
+api/index.ts          # entry Vercel
+```
+
+---
+
+## Catatan penting
+
+- Autentikasi JWT/session **belum** dipakai. Login mengembalikan profil user (tanpa password) untuk disimpan di client.
+- Endpoint houses/wastes **terbuka** (tidak perlu token).
+- Relasi `user` / `house` pada response bernilai objek atau `null` (bukan objek dengan field `null`).
+- Hapus rumah ditolak (`409`) jika masih ada data sampah yang merujuk rumah itu.
+- `userId` / `houseId` yang tidak ada di database ditolak (`422`).

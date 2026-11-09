@@ -166,16 +166,20 @@ Create/update/get by id mengembalikan rumah **plus** `user` (pendata).
 
 ### `POST /houses`
 
-| Field | Tipe | Wajib |
-| :--- | :--- | :--- |
-| `rt` | string | Ya |
-| `headOfFamilyName` | string | Ya |
-| `numberOfFamilyMembers` | number \| string | Ya |
-| `isSortingWaste` | `"ya"` \| `"tidak"` \| `"sebagian"` | Ya |
-| `streetName` | string \| null | Tidak |
-| `houseNumber` | string \| number \| null | Tidak |
-| `userId` | number \| null | Tidak |
+Mendukung `application/json` (jika tanpa upload gambar) maupun `multipart/form-data` (jika menyertakan file gambar atau tanpa gambar).
 
+| Field | Tipe | Wajib | Keterangan |
+| :--- | :--- | :--- | :--- |
+| `rt` | string | Ya | Maksimal 5 karakter |
+| `headOfFamilyName` | string | Ya | Maksimal 255 karakter |
+| `numberOfFamilyMembers` | number \| string | Ya | Jumlah anggota keluarga |
+| `isSortingWaste` | `"ya"` \| `"tidak"` \| `"sebagian"` | Ya | Status pemilahan sampah |
+| `streetName` | string \| null | Tidak | Nama jalan / gang |
+| `houseNumber` | string \| number \| null | Tidak | Nomor rumah |
+| `userId` | number \| null | Tidak | ID mahasiswa/pendata |
+| `file` | file (binary) | Tidak | Foto rumah (`jpeg`, `png`, `webp`, maks 5MB) |
+
+**Contoh Payload JSON (Tanpa Gambar):**
 ```json
 {
   "rt": "02",
@@ -185,6 +189,21 @@ Create/update/get by id mengembalikan rumah **plus** `user` (pendata).
   "streetName": "Gang Mawar",
   "houseNumber": "05",
   "userId": 1
+}
+```
+
+**Contoh Payload FormData (Dengan Gambar Opsional):**
+```ts
+const formData = new FormData();
+formData.append("rt", "02");
+formData.append("headOfFamilyName", "Bambang Pamungkas");
+formData.append("numberOfFamilyMembers", "4");
+formData.append("isSortingWaste", "ya");
+formData.append("streetName", "Gang Mawar");
+formData.append("houseNumber", "05");
+formData.append("userId", "1");
+if (selectedFile) {
+  formData.append("file", selectedFile);
 }
 ```
 
@@ -268,15 +287,19 @@ Query: `page`, `pageSize`. Diurutkan `createdAt` descending.
 ### `PATCH /houses/:id`
 
 Partial update. Kirim hanya field yang berubah. String wajib (`rt`, `headOfFamilyName`) tidak boleh kosong jika dikirim.
+Mendukung `application/json` maupun `multipart/form-data`.
+Bisa menyertakan field `file` (gambar) untuk mengganti foto rumah yang sudah ada. Gambar lama di Cloudinary akan otomatis dihapus dan digantikan gambar baru.
 
 `userId: null` melepas relasi pendata.
 
-**200** — `House updated successfully`, `data` lengkap termasuk `user`.
+**200** — `House updated successfully`, `data` lengkap termasuk `user` dan link `imageUrl`.
 
 - **404** — rumah tidak ada
 - **400** / **422** — sama seperti create
 
 ### `DELETE /houses/:id`
+
+Menghapus data rumah sekaligus menghapus file foto rumah dari Cloudinary secara otomatis jika sebelumnya memiliki gambar.
 
 **200** `{ "success": true, "message": "House deleted successfully" }`
 

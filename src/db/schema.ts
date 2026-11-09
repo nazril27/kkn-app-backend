@@ -19,6 +19,8 @@ export const houses = pgTable('houses', {
   numberOfFamilyMembers: varchar('number_of_family_members', { length: 5 }).notNull(),
   isSortingWaste: varchar('is_sorting_waste', { length: 100 }), // ya, tidak, sebagian
   userId: integer('user_id').references(() => users.id, { onDelete: 'restrict' }),
+  imageUrl: varchar('image_url', { length: 255 }), // todo: migrate
+  imagePublicId: varchar('image_public_id', { length: 255 }), // todo: migrate
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

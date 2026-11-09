@@ -5,6 +5,7 @@ import { AppError } from "../../lib/errors";
 import { normalizePagination } from "../../lib/pagination";
 import { nullIfMissing } from "../../lib/relations";
 import { UserService } from "../users/user.service";
+import { uploadImage, deleteImage } from "../../lib/cloudinary";
 
 export type House = typeof houses.$inferSelect;
 export type NewHouse = typeof houses.$inferInsert;
@@ -24,6 +25,8 @@ const houseSelect = {
   headOfFamilyName: houses.headOfFamilyName,
   numberOfFamilyMembers: houses.numberOfFamilyMembers,
   isSortingWaste: houses.isSortingWaste,
+  imageUrl: houses.imageUrl,
+  imagePublicId: houses.imagePublicId,
   userId: houses.userId,
   createdAt: houses.createdAt,
   updatedAt: houses.updatedAt,
@@ -51,48 +54,43 @@ export class HouseService {
     const user = await UserService.findById(userId);
     if (!user) {
       throw new AppError(`User with ID ${userId} not found`, 422);
-    }
+    } 
   }
 
-  static async createHouse(data: NewHouse) {
+  static async createHouse(data: NewHouse, file?: File) {
     await this.ensureUserExists(data.userId);
     const [createdHouse] = await db.insert(houses).values(data).returning();
     if (!createdHouse) {
       throw new AppError("Failed to create house.", 500);
     }
+
+    if (file) {
+      let uploadedImage: { secure_url: string; public_id: string } | null = null;
+      try {
+        uploadedImage = await uploadImage(file, `houses/${createdHouse.id}`);
+        await db
+          .update(houses)
+          .set({
+            imageUrl: uploadedImage.secure_url,
+            imagePublicId: uploadedImage.public_id,
+          })
+          .where(eq(houses.id, createdHouse.id));
+      } catch (uploadError) {
+        // Rollback: hapus data rumah yang sudah dibuat dan bersihkan aset cloudinary jika ada
+        await db.delete(houses).where(eq(houses.id, createdHouse.id)).catch(console.error);
+        if (uploadedImage?.public_id) {
+          await deleteImage(uploadedImage.public_id).catch(console.error);
+        }
+        throw new AppError("Failed to upload house image", 500);
+      }
+    }
+
     const house = await this.getHouseById(createdHouse.id);
     if (!house) {
       throw new AppError("Failed to create house.", 500);
     }
     return house;
   }
-
-  // static async getAllHouses(page: number = 1, pageSize: number = 10) {
-  //   const { currentPage, limit, offset } = normalizePagination(page, pageSize);
-
-  //   const rows = await db
-  //     .select(houseSelect)
-  //     .from(houses)
-  //     .leftJoin(users, eq(houses.userId, users.id))
-  //     .orderBy(desc(houses.createdAt))
-  //     .limit(limit)
-  //     .offset(offset);
-
-  //   const [countResult] = await db
-  //     .select({ count: count(houses.id) })
-  //     .from(houses);
-
-  //   const total = countResult ? Number(countResult.count) : 0;
-  //   const totalPages = Math.ceil(total / limit);
-
-  //   return {
-  //     data: rows.map((row) => mapHouse(row)!),
-  //     total,
-  //     page: currentPage,
-  //     pageSize: limit,
-  //     totalPages,
-  //   };
-  // }
 
   static async getAllHouses(
     page: number = 1,
@@ -159,12 +157,15 @@ export class HouseService {
     return mapHouse(house ?? null);
   }
 
-  static async updateHouse(id: number, data: Partial<NewHouse>) {
+  static async updateHouse(id: number, data: Partial<NewHouse>, file?: File) {
     await this.ensureUserExists(data.userId);
+
+    const { imagePublicId, imageUrl, ...updateData } = data;
+
     const [updatedHouse] = await db
       .update(houses)
       .set({
-        ...data,
+        ...updateData,
         updatedAt: new Date(),
       })
       .where(eq(houses.id, id))
@@ -173,6 +174,34 @@ export class HouseService {
     if (!updatedHouse) {
       return null;
     }
+
+    const oldImagePublicId = updatedHouse.imagePublicId;
+
+    if (file) {
+      let uploadedImage: { secure_url: string; public_id: string } | null = null;
+      try {
+        uploadedImage = await uploadImage(file, `houses/${updatedHouse.id}`);
+        await db
+          .update(houses)
+          .set({
+            imageUrl: uploadedImage.secure_url,
+            imagePublicId: uploadedImage.public_id,
+          })
+          .where(eq(houses.id, updatedHouse.id));
+
+        // Hapus gambar lama di Cloudinary agar tidak menjadi file sampah (orphan)
+        if (oldImagePublicId) {
+          await deleteImage(oldImagePublicId).catch(console.error);
+        }
+      } catch (error) {
+        // Bersihkan gambar baru jika update ke database gagal
+        if (uploadedImage?.public_id) {
+          await deleteImage(uploadedImage.public_id).catch(console.error);
+        }
+        throw new AppError("Failed to upload house image", 500);
+      }
+    }
+
 
     return this.getHouseById(id);
   }
@@ -194,7 +223,11 @@ export class HouseService {
     const [deletedHouse] = await db
       .delete(houses)
       .where(eq(houses.id, id))
-      .returning({ id: houses.id });
+      .returning({ id: houses.id, imagePublicId: houses.imagePublicId });
+
+    if (deletedHouse?.imagePublicId) {
+      await deleteImage(deletedHouse.imagePublicId).catch(console.error);
+    }
 
     return !!deletedHouse;
   }

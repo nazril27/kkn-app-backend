@@ -5,11 +5,13 @@ import { authController } from "./modules/users/auth.controller";
 import { houseController } from "./modules/houses/house.controller";
 import { wasteController } from "./modules/wastes/waste.controller";
 import { userController } from "./modules/users/user.controller";
+import { houseImageController } from "./modules/houses/image.controller";
 
 export const app = new Elysia()
   .use(cors())
   .use(authController)
   .use(houseController)
+  .use(houseImageController)
   .use(wasteController)
   .use(dashboardController)
   .use(userController)

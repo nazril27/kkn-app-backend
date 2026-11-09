@@ -17,6 +17,7 @@
     "@types/bun": "latest",
     "@types/node": "^26.6.6",
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.11.0",
     "drizzle-orm": "^0.45.4",
     "elysia": "^1.4.30"
   }

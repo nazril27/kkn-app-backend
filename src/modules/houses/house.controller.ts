@@ -21,19 +21,23 @@ export class HouseController {
       streetName?: string | null;
       houseNumber?: string | number | null;
       userId?: number | null;
+      file?: File;
     };
     set: { status?: number | string };
   }) {
     try {
-      const house = await HouseService.createHouse({
-        rt: body.rt.trim(),
-        headOfFamilyName: body.headOfFamilyName.trim(),
-        numberOfFamilyMembers: normalizeFamilyMembers(body.numberOfFamilyMembers),
-        isSortingWaste: body.isSortingWaste,
-        streetName: normalizeOptionalString(body.streetName),
-        houseNumber: normalizeHouseNumber(body.houseNumber),
-        userId: body.userId ?? null,
-      });
+      const house = await HouseService.createHouse(
+        {
+          rt: body.rt.trim(),
+          headOfFamilyName: body.headOfFamilyName.trim(),
+          numberOfFamilyMembers: normalizeFamilyMembers(body.numberOfFamilyMembers),
+          isSortingWaste: body.isSortingWaste,
+          streetName: normalizeOptionalString(body.streetName),
+          houseNumber: normalizeHouseNumber(body.houseNumber),
+          userId: body.userId ?? null,
+        },
+        body.file
+      );
 
       set.status = 201;
       return {
@@ -50,31 +54,6 @@ export class HouseController {
       return response;
     }
   }
-
-  // static async getAll({
-  //   query,
-  //   set,
-  // }: {
-  //   query: { page?: number; pageSize?: number };
-  //   set: { status?: number | string };
-  // }) {
-  //   try {
-  //     const result = await HouseService.getAllHouses(query.page, query.pageSize);
-  //     return {
-  //       success: true,
-  //       message: "Houses retrieved successfully",
-  //       ...result,
-  //     };
-  //   } catch (error: unknown) {
-  //     const { status, body: response } = toErrorResponse(
-  //       error,
-  //       "Failed to retrieve houses",
-  //       500
-  //     );
-  //     set.status = status;
-  //     return response;
-  //   }
-  // }
 
   static async getAll({
     query,
@@ -156,6 +135,7 @@ export class HouseController {
       streetName?: string | null;
       houseNumber?: string | number | null;
       userId?: number | null;
+      file?: File;
     };
     set: { status?: number | string };
   }) {
@@ -190,7 +170,7 @@ export class HouseController {
       }
       if (body.userId !== undefined) updateData.userId = body.userId;
 
-      const updatedHouse = await HouseService.updateHouse(id, updateData);
+      const updatedHouse = await HouseService.updateHouse(id, updateData, body.file);
 
       return {
         success: true,
@@ -251,7 +231,11 @@ export const houseController = new Elysia({ prefix: "/houses" })
         isSortingWaste: sortingWasteSchema,
         streetName: t.Optional(t.Nullable(t.String({ maxLength: 255 }))),
         houseNumber: t.Optional(t.Nullable(t.Union([t.String({ maxLength: 5 }), t.Number()]))),
-        userId: t.Optional(t.Nullable(t.Number())),
+        userId: t.Optional(t.Nullable(t.Numeric())),
+        file: t.Optional(t.File({
+          type: ["image/jpeg", "image/png", "image/webp"],
+          maxSize: "5m",
+        })),
       }),
     }
   )
@@ -291,7 +275,11 @@ export const houseController = new Elysia({ prefix: "/houses" })
         isSortingWaste: t.Optional(sortingWasteSchema),
         streetName: t.Optional(t.Nullable(t.String({ maxLength: 255 }))),
         houseNumber: t.Optional(t.Nullable(t.Union([t.String({ maxLength: 5 }), t.Number()]))),
-        userId: t.Optional(t.Nullable(t.Number())),
+        userId: t.Optional(t.Nullable(t.Numeric())),
+        file: t.Optional(t.File({
+          type: ["image/jpeg", "image/png", "image/webp"],
+          maxSize: "5m",
+        }))
       }),
     }
   )
@@ -299,6 +287,6 @@ export const houseController = new Elysia({ prefix: "/houses" })
     "/:id",
     async ({ params, set }) => HouseController.delete({ params: { id: params.id }, set }),
     {
-      params: idParamSchema,
+      params: idParamSchema
     }
   );

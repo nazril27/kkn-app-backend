@@ -160,12 +160,22 @@ export class HouseService {
   static async updateHouse(id: number, data: Partial<NewHouse>, file?: File) {
     await this.ensureUserExists(data.userId);
 
-    const { imagePublicId, imageUrl, ...updateData } = data;
+    const [existing] = await db
+      .select({ imagePublicId: houses.imagePublicId })
+      .from(houses)
+      .where(eq(houses.id, id))
+      .limit(1);
+
+    if (!existing) {
+      return null;
+    }
+
+    const oldImagePublicId = existing.imagePublicId;
 
     const [updatedHouse] = await db
       .update(houses)
       .set({
-        ...updateData,
+        ...data,
         updatedAt: new Date(),
       })
       .where(eq(houses.id, id))
@@ -175,7 +185,14 @@ export class HouseService {
       return null;
     }
 
-    const oldImagePublicId = updatedHouse.imagePublicId;
+    // Hapus gambar lama jika ada gambar baru atau gambar dikosongkan
+    if (
+      data.imagePublicId !== undefined &&
+      oldImagePublicId &&
+      oldImagePublicId !== data.imagePublicId
+    ) {
+      await deleteImage(oldImagePublicId).catch(console.error);
+    }
 
     if (file) {
       let uploadedImage: { secure_url: string; public_id: string } | null = null;

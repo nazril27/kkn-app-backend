@@ -21,6 +21,8 @@ export class HouseController {
       streetName?: string | null;
       houseNumber?: string | number | null;
       userId?: number | null;
+      imageUrl?: string | null;
+      imagePublicId?: string | null;
       file?: File;
     };
     set: { status?: number | string };
@@ -35,6 +37,8 @@ export class HouseController {
           streetName: normalizeOptionalString(body.streetName),
           houseNumber: normalizeHouseNumber(body.houseNumber),
           userId: body.userId ?? null,
+          imageUrl: body.imageUrl ?? null,
+          imagePublicId: body.imagePublicId ?? null,
         },
         body.file
       );
@@ -135,6 +139,8 @@ export class HouseController {
       streetName?: string | null;
       houseNumber?: string | number | null;
       userId?: number | null;
+      imageUrl?: string | null;
+      imagePublicId?: string | null;
       file?: File;
     };
     set: { status?: number | string };
@@ -169,6 +175,8 @@ export class HouseController {
         updateData.houseNumber = normalizeHouseNumber(body.houseNumber);
       }
       if (body.userId !== undefined) updateData.userId = body.userId;
+      if (body.imageUrl !== undefined) updateData.imageUrl = body.imageUrl;
+      if (body.imagePublicId !== undefined) updateData.imagePublicId = body.imagePublicId;
 
       const updatedHouse = await HouseService.updateHouse(id, updateData, body.file);
 
@@ -232,6 +240,8 @@ export const houseController = new Elysia({ prefix: "/houses" })
         streetName: t.Optional(t.Nullable(t.String({ maxLength: 255 }))),
         houseNumber: t.Optional(t.Nullable(t.Union([t.String({ maxLength: 5 }), t.Number()]))),
         userId: t.Optional(t.Nullable(t.Numeric())),
+        imageUrl: t.Optional(t.Nullable(t.String())),
+        imagePublicId: t.Optional(t.Nullable(t.String())),
         file: t.Optional(t.File({
           type: ["image/jpeg", "image/png", "image/webp"],
           maxSize: "5m",
@@ -276,6 +286,8 @@ export const houseController = new Elysia({ prefix: "/houses" })
         streetName: t.Optional(t.Nullable(t.String({ maxLength: 255 }))),
         houseNumber: t.Optional(t.Nullable(t.Union([t.String({ maxLength: 5 }), t.Number()]))),
         userId: t.Optional(t.Nullable(t.Numeric())),
+        imageUrl: t.Optional(t.Nullable(t.String())),
+        imagePublicId: t.Optional(t.Nullable(t.String())),
         file: t.Optional(t.File({
           type: ["image/jpeg", "image/png", "image/webp"],
           maxSize: "5m",

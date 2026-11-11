@@ -15,6 +15,13 @@
       "when": 1793898878328,
       "tag": "0001_true_lady_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794414085633,
+      "tag": "0002_sturdy_korg",
+      "breakpoints": true
     }
   ]
 }

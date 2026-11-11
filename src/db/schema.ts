@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, timestamp, decimal, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, integer, timestamp, decimal, text } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -31,6 +31,7 @@ export const wastes = pgTable('wastes', {
   houseId: integer('house_id').references(() => houses.id, { onDelete: 'restrict' }),
   weight: decimal('weight').notNull(),
   typesOfWaste: varchar('types_of_waste').notNull(), // organik, nonorganik, residu, lainnya
+  note: text('note'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

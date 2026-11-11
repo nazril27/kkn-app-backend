@@ -12,6 +12,7 @@ export class WasteController {
     body: {
       weight: string | number;
       typesOfWaste: string;
+      note?: string | null;
       houseId?: number | null;
       userId?: number | null;
     };
@@ -21,6 +22,7 @@ export class WasteController {
       const waste = await WasteService.createWaste({
         weight: normalizeWeight(body.weight),
         typesOfWaste: body.typesOfWaste,
+        note: body.note ?? null,
         houseId: body.houseId ?? null,
         userId: body.userId ?? null,
       });
@@ -108,6 +110,7 @@ export class WasteController {
     body: {
       weight?: string | number;
       typesOfWaste?: string;
+      note?: string | null;
       houseId?: number | null;
       userId?: number | null;
     };
@@ -126,6 +129,7 @@ export class WasteController {
       const updateData: Partial<NewWaste> = {};
       if (body.weight !== undefined) updateData.weight = normalizeWeight(body.weight);
       if (body.typesOfWaste !== undefined) updateData.typesOfWaste = body.typesOfWaste;
+      if (body.note !== undefined) updateData.note = body.note; 
       if (body.houseId !== undefined) updateData.houseId = body.houseId;
       if (body.userId !== undefined) updateData.userId = body.userId;
 
@@ -186,6 +190,7 @@ export const wasteController = new Elysia({ prefix: "/wastes" })
       body: t.Object({
         weight: t.Union([t.String(), t.Number()]),
         typesOfWaste: wasteTypeSchema,
+        note: t.Optional(t.Nullable(t.String())),
         houseId: t.Optional(t.Nullable(t.Number())),
         userId: t.Optional(t.Nullable(t.Number())),
       }),
@@ -214,6 +219,7 @@ export const wasteController = new Elysia({ prefix: "/wastes" })
       body: t.Object({
         weight: t.Optional(t.Union([t.String(), t.Number()])),
         typesOfWaste: t.Optional(wasteTypeSchema),
+        note: t.Optional(t.Nullable(t.String())),
         houseId: t.Optional(t.Nullable(t.Number())),
         userId: t.Optional(t.Nullable(t.Number())),
       }),

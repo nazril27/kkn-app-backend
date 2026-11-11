@@ -1,0 +1,1 @@
+ALTER TABLE "wastes" ADD COLUMN "note" text;

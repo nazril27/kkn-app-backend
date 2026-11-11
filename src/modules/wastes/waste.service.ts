@@ -14,6 +14,7 @@ const wasteSelect = {
   id: wastes.id,
   weight: wastes.weight,
   typesOfWaste: wastes.typesOfWaste,
+  note: wastes.note,
   userId: wastes.userId,
   houseId: wastes.houseId,
   createdAt: wastes.createdAt,
